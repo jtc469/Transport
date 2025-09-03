@@ -9,53 +9,85 @@
 
     <h1 id="main-header">Live TfL Line Status</h1>
     
+    <div id="weather-advice"></div>
+
     <div id="status-container">
         <p>Loading statuses...</p>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', getLineStatuses);
+        document.addEventListener('DOMContentLoaded', main);
 
-        async function getLineStatuses() {
-            // --- 1. Get the header element ---
+        async function displayWeatherAdvice() {
+            const container = document.getElementById('weather-advice');
+            // We're now also asking for the hourly precipitation probability
+            const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=51.5072&longitude=-0.1276&current=temperature_2m,weather_code,is_day&hourly=precipitation_probability&timezone=Europe%2FLondon&forecast_days=1';
+
+            try {
+                const response = await fetch(weatherUrl);
+                const weatherData = await response.json();
+                
+                // --- Extract Data ---
+                const temp = weatherData.current.temperature_2m;
+                const weatherCode = weatherData.current.weather_code;
+                
+                // --- Find the current hour's rain chance ---
+                const now = new Date();
+                const currentHour = now.getHours();
+                const rainChance = weatherData.hourly.precipitation_probability[currentHour];
+                
+                // --- Create new info and advice strings ---
+                const weatherInfo = `Weather: ${temp}°C with a ${rainChance}% chance of rain.`;
+                let coatAdvice = '';
+                if (temp < 14 || rainChance > 30) {
+                    coatAdvice = `You should probably wear a coat.`;
+                } else {
+                    coatAdvice = `No coat.`;
+                }
+
+                // --- Display the information ---
+                const infoElement = document.createElement('p');
+                infoElement.textContent = weatherInfo;
+                
+                const adviceElement = document.createElement('p');
+                adviceElement.textContent = coatAdvice;
+
+                container.appendChild(infoElement);
+                container.appendChild(adviceElement);
+
+            } catch (error) {
+                console.error('Failed to fetch weather data:', error);
+            }
+        }
+
+        async function main() {
             const header = document.getElementById('main-header');
-            
-            // --- 2. Get and format the current time ---
             const now = new Date();
             const timestamp = now.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-
-            // --- 3. Update the header text ---
             header.textContent = `Live TfL Status (${timestamp})`;
-
-
-            // The rest of your code remains the same
+            
+            await displayWeatherAdvice();
+            await getLineStatuses();
+        }
+        
+        async function getLineStatuses() {
             const lines = ['district', 'bakerloo', 'lioness', 'mildmay'];
             const container = document.getElementById('status-container');
             container.innerHTML = ''; 
 
             for (const lineId of lines) {
                 const url = `https://api.tfl.gov.uk/Line/${lineId}/Status`;
-                
                 try {
                     const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`API returned status ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`API error`);
                     const data = await response.json();
-
                     const lineName = data[0].name;
                     const lineStatus = data[0].lineStatuses[0].statusSeverityDescription;
-
                     const statusElement = document.createElement('p');
                     statusElement.textContent = `${lineName}: ${lineStatus}`;
-
                     container.appendChild(statusElement);
-
                 } catch (error) {
                     console.error(`Failed to fetch status for ${lineId}:`, error);
-                    const errorElement = document.createElement('p');
-                    errorElement.textContent = `Could not fetch status for the ${lineId} line.`;
-                    container.appendChild(errorElement);
                 }
             }
         }
