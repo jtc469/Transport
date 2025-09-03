@@ -7,47 +7,51 @@
 </head>
 <body>
 
-    <h1>Live TfL Line Status</h1>
+    <h1 id="main-header">Live TfL Line Status</h1>
     
     <div id="status-container">
         <p>Loading statuses...</p>
     </div>
 
     <script>
-        // This function runs automatically when the page has finished loading
         document.addEventListener('DOMContentLoaded', getLineStatuses);
 
         async function getLineStatuses() {
-            // Define the lines you want to check
+            // --- 1. Get the header element ---
+            const header = document.getElementById('main-header');
+            
+            // --- 2. Get and format the current time ---
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+
+            // --- 3. Update the header text ---
+            header.textContent = `Live TfL Status (${timestamp})`;
+
+
+            // The rest of your code remains the same
             const lines = ['district', 'bakerloo', 'lioness', 'mildmay'];
             const container = document.getElementById('status-container');
-            container.innerHTML = ''; // Clear the "Loading..." message
+            container.innerHTML = ''; 
 
-            // Loop through each line ID
             for (const lineId of lines) {
                 const url = `https://api.tfl.gov.uk/Line/${lineId}/Status`;
                 
                 try {
                     const response = await fetch(url);
-                    // Check if the request was successful
                     if (!response.ok) {
                         throw new Error(`API returned status ${response.status}`);
                     }
                     const data = await response.json();
 
-                    // Extract the line name and status from the API response
                     const lineName = data[0].name;
                     const lineStatus = data[0].lineStatuses[0].statusSeverityDescription;
 
-                    // Create a new paragraph element like <p>Line Name: Status</p>
                     const statusElement = document.createElement('p');
                     statusElement.textContent = `${lineName}: ${lineStatus}`;
 
-                    // Add the new element to our container on the webpage
                     container.appendChild(statusElement);
 
                 } catch (error) {
-                    // If something goes wrong, display an error for that line
                     console.error(`Failed to fetch status for ${lineId}:`, error);
                     const errorElement = document.createElement('p');
                     errorElement.textContent = `Could not fetch status for the ${lineId} line.`;
